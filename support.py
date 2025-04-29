@@ -1,36 +1,52 @@
+# support.py
 import subprocess
 
-def get_window_linux(window_name: str):
+def get_window_linux(name_pattern: str):
+    """
+    先用 xdotool 尝试查找窗口，失败时再借助 wmctrl -lG 解析。
+    返回 (left, top, width, height) 或 None。
+    """
+    # 1) 尝试 xdotool
     try:
-        # get window by keyword
-        cmd_search = ["xdotool", "search", "--onlyvisible", "--name", window_name]
-        window_ids = subprocess.check_output(cmd_search).decode("utf-8").strip().split("\n")
-        if not window_ids or window_ids[0].strip() == "":
-            print(f"[get_window_linux] No window found with name: {window_name}")
-            return None
-        window_id = window_ids[0].strip()
+        out = subprocess.check_output(
+            ["xdotool", "search", "--onlyvisible", "--name", name_pattern],
+            stderr=subprocess.DEVNULL
+        ).decode().strip().split()
+        if out:
+            wid = out[0]
+            # 再用 xwininfo 拿几何
+            info = subprocess.check_output(
+                ["xwininfo", "-id", wid]
+            ).decode().splitlines()
+            left = top = width = height = None
+            for line in info:
+                line = line.strip()
+                if line.startswith("Absolute upper-left X:"):
+                    left = int(line.split(":")[1])
+                elif line.startswith("Absolute upper-left Y:"):
+                    top = int(line.split(":")[1])
+                elif line.startswith("Width:"):
+                    width = int(line.split(":")[1])
+                elif line.startswith("Height:"):
+                    height = int(line.split(":")[1])
+            if None not in (left, top, width, height):
+                return (left, top, width, height)
+    except subprocess.CalledProcessError:
+        pass
 
-        # get the shape info of window by xwininfo
-        cmd_info = ["xwininfo", "-id", window_id]
-        info_output = subprocess.check_output(cmd_info).decode("utf-8").strip().split("\n")
+    # 2) 回落到 wmctrl
+    try:
+        lines = subprocess.check_output(
+            ["wmctrl", "-lG"],
+            stderr=subprocess.DEVNULL
+        ).decode().splitlines()
+        for L in lines:
+            # wmctrl -lG 格式: ID DESKTOP X Y W H HOST TITLE...
+            parts = L.split(maxsplit=7)
+            if len(parts) >= 8 and name_pattern in parts[7]:
+                _, _, x, y, w, h, _, _ = parts
+                return (int(x), int(y), int(w), int(h))
+    except subprocess.CalledProcessError:
+        pass
 
-        left, top, width, height = None, None, None, None
-        for line in info_output:
-            line = line.strip()
-            if line.startswith("Absolute upper-left X:"):
-                left = int(line.split(":")[1])
-            elif line.startswith("Absolute upper-left Y:"):
-                top = int(line.split(":")[1])
-            elif line.startswith("Width:"):
-                width = int(line.split(":")[1])
-            elif line.startswith("Height:"):
-                height = int(line.split(":")[1])
-
-        if None in [left, top, width, height]:
-            print("[get_window_linux] Failed to parse xwininfo output.")
-            return None
-        return (left, top, width, height)
-
-    except subprocess.CalledProcessError as e:
-        print(f"[get_window_linux] Error: {e}")
-        return None
+    return None
