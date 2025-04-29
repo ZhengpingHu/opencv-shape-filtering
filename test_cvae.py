@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-test_cvae.py
-
-用 model_improved.py 定义的网络加载模型权重，
-随机从 HDF5 抽一帧，做 CVAE 重建，并保存对比图。
-"""
+# test the trained cvae model.
 
 import os
 import random
@@ -17,12 +12,9 @@ from PIL import Image
 
 from model_improved import Encoder, Decoder, reparameterize
 
-# -----------------------------------------------------------------------------
-# 在模块顶层定义预处理，作用于 PIL.Image → Resize(64×64) → Tensor C×64×64
-# -----------------------------------------------------------------------------
 preprocess = transforms.Compose([
-    transforms.Resize((64, 64)),  # PIL.Image → PIL.Image(64×64)
-    transforms.ToTensor(),        # PIL.Image → Tensor C×64×64, 值 ∈ [0,1]
+    transforms.Resize((64, 64)),
+    transforms.ToTensor(),
 ])
 
 def load_cvae(enc_path, dec_path, in_ch, latent_dim, device='cpu'):
@@ -36,27 +28,19 @@ def load_cvae(enc_path, dec_path, in_ch, latent_dim, device='cpu'):
 
 def reconstruct_and_show(h5_path, encoder, decoder,
                          in_ch, latent_dim, device='cpu', save_dir=None):
-    # 从 HDF5 随机取一帧
+    # random frame from dataset.
     with h5py.File(h5_path, 'r') as hf:
         N   = hf['frames'].shape[0]
         idx = random.randrange(N)
-        arr = hf['frames'][idx]          # ndarray (H,W) 或 (H,W,1)
-
-    # ndarray → PIL.Image → preprocess → Tensor → add batch dim
+        arr = hf['frames'][idx]
     img    = Image.fromarray(arr.squeeze())
     tensor = preprocess(img).unsqueeze(0).to(device)  # 1×C×64×64
-
-    # 前向重建
     with torch.no_grad():
         mu, logvar = encoder(tensor)
         z          = reparameterize(mu, logvar)
         recon      = decoder(z)
-
-    # 转 np 用于可视化
     orig_np  = tensor.squeeze().cpu().numpy()
     recon_np = recon.squeeze().cpu().numpy()
-
-    # 可视化并保存
     fig, axes = plt.subplots(1, 2, figsize=(6,3))
     axes[0].imshow(orig_np,  cmap='gray', vmin=0, vmax=1)
     axes[0].set_title(f"Original idx={idx}")

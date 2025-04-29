@@ -18,7 +18,7 @@ def train_cvae(
     batch_size=32, epochs=50, lr=1e-3, beta=1.0,
     device='cuda', num_workers=2, fp16=False
 ):
-    # 1) 数据集拆分
+    # 1) split dataset.
     dataset = H5Dataset(h5_path, normalize=True, transform=None)
     N = len(dataset)
     idxs = np.arange(N)
@@ -44,7 +44,7 @@ def train_cvae(
                             num_workers=num_workers,
                             pin_memory=True)
 
-    # 2) 模型、优化器、调度器
+    # 2) model.
     device = torch.device(device if torch.cuda.is_available() else 'cpu')
     encoder = Encoder(1, 64).to(device)
     decoder = Decoder(1, 64).to(device)
@@ -58,7 +58,7 @@ def train_cvae(
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # 3) 训练 & 验证日志
+    # train log
     logs = {
         'train_loss': [], 'train_recon': [], 'train_kld': [],
         'val_loss': [],   'val_recon':   [], 'val_kld':   []
@@ -71,14 +71,14 @@ def train_cvae(
     ])
 
     for epoch in range(1, epochs+1):
-        # --- 训练 ---
+        # train
         encoder.train(); decoder.train()
         tl, tr, tk = 0.0, 0.0, 0.0
         pbar = tqdm(train_loader,
                     desc=f"[Train] Epoch {epoch}/{epochs}",
                     ncols=100, leave=False)
         for batch in pbar:
-            # 预处理：resize & to tensor
+            # Preprocessing：resize & to tensor
             imgs = torch.stack([transform(img.squeeze()) for img in batch], dim=0)
             imgs = imgs.to(device)
             if fp16: imgs = imgs.half()
@@ -104,7 +104,7 @@ def train_cvae(
         logs['train_recon'].append(tr/len(train_set))
         logs['train_kld'].append(tk/len(train_set))
 
-        # --- 验证 ---
+        # eval
         encoder.eval(); decoder.eval()
         vl, vr, vk = 0.0, 0.0, 0.0
         with torch.no_grad():
@@ -128,20 +128,20 @@ def train_cvae(
         logs['val_recon'].append(vr/len(val_set))
         logs['val_kld'].append(vk/len(val_set))
 
-        # --- 打印 ---
+        # print conslog.
         print(
             f"Epoch {epoch}/{epochs}  "
             f"Train Loss {logs['train_loss'][-1]:.4f}  "
             f"Val Loss {logs['val_loss'][-1]:.4f}"
         )
 
-        # 保存模型
+        # save model
         torch.save(encoder.state_dict(),
                    os.path.join(save_dir, f"enc_ep{epoch:02d}.pth"))
         torch.save(decoder.state_dict(),
                    os.path.join(save_dir, f"dec_ep{epoch:02d}.pth"))
 
-    # 4) 绘制结果曲线
+    # 4) result curve
     epochs_range = range(1, epochs+1)
     plt.figure(figsize=(10,6))
     plt.plot(epochs_range, logs['train_loss'], label='Train Total')
@@ -181,4 +181,3 @@ if __name__ == "__main__":
         num_workers=args.workers,
         fp16=args.fp16
     )
-
