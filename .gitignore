@@ -1,6 +1,5 @@
 *.h5
 *.hdf5
-*.png
 *.pth
 data/MNIST/
 EOF
