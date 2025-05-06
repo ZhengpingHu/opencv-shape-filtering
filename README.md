@@ -123,9 +123,13 @@ Add the following to `.gitignore` to avoid committing large datasets and images:
 ```
 *.h5
 *.hdf5
-*.png
 *.pth
 ```
+
+## Notice
+
+Waiting to add the YOLO frame in the next step and a different branch.
+
 
 ## References:
 
