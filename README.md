@@ -130,6 +130,9 @@ Add the following to `.gitignore` to avoid committing large datasets and images:
 
 Waiting to add the YOLO frame in the next step and a different branch.
 
+## OBB
+
+Model trained, saved at: ```runs\obb\train8\weights\best.pt```
 
 ## References:
 
