@@ -138,9 +138,9 @@ Model prediction:
 
 use command:
 
-bash```
+```bash
 yolo obb predict model=runs/obb/train8/weights/best.pt source=MODIFY save=True save_txt=True
-```
+
 to save the extra angel information
 
 ## References:
