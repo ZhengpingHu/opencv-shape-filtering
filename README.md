@@ -134,6 +134,15 @@ Waiting to add the YOLO frame in the next step and a different branch.
 
 Model trained, saved at: ```runs\obb\train8\weights\best.pt```
 
+Model prediction:
+
+use command:
+
+bash```
+yolo obb predict model=runs/obb/train8/weights/best.pt source=MODIFY save=True save_txt=True
+```
+to save the extra angel information
+
 ## References:
 
 [1] R. C. Gonzalez and R. E. Woods, _Digital Image Processing_, 4th ed. Pearson, 2018.
