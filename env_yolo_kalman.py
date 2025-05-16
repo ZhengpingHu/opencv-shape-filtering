@@ -8,127 +8,113 @@ import cv2
 import gymnasium as gym
 from ultralytics import YOLO
 
-def build_kalman():
-    kf = cv2.KalmanFilter(4, 2, 0)
-    kf.transitionMatrix    = np.array([[1,0,1,0],
-                                       [0,1,0,1],
-                                       [0,0,1,0],
-                                       [0,0,0,1]], dtype=np.float32)
-    kf.measurementMatrix   = np.array([[1,0,0,0],
-                                       [0,1,0,0]], dtype=np.float32)
-    kf.processNoiseCov     = np.eye(4, dtype=np.float32) * 1e-2
-    kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1e-1
-    kf.errorCovPost        = np.eye(4, dtype=np.float32)
-    kf.statePost           = np.zeros((4,1), dtype=np.float32)
-    return kf
+class FeatureEnv:
+    """
+    环境包装：将 YOLO-OBB + KalmanFilter 与 Gym LunarLander 结合，
+    返回 8 维特征 [x, y, vx, vy, 0, 0, x_p, y_p]，并在 debug 模式下显示带框画面。
+    """
+    def __init__(self, model_path, title, fps, gravity, launch_env=False):
+        # 初始化 Gym 环境
+        self.env = gym.make(
+            "LunarLander-v3",
+            render_mode="rgb_array",
+            gravity=gravity
+        )
+        self.frame_interval = 1.0 / fps
+        self.model = YOLO(model_path, task="detect")
+        self.kf = self._build_kalman()
+        self.launch_env = launch_env
+        if self.launch_env:
+            cv2.namedWindow(title, cv2.WINDOW_NORMAL)
 
-def main():
-    p = argparse.ArgumentParser("Env + YOLO-OBB + Kalman")
-    p.add_argument("--model",   required=True,  help="YOLO OBB .pt weight")
-    p.add_argument("--conf",    type=float, default=0.3, help="Conf")
-    p.add_argument("--fps",     type=float, default=5.0, help="max FPS")
-    p.add_argument("--gravity", type=float, default=-3.5, help="LunarLander gravity")
-    args = p.parse_args()
+    def _build_kalman(self):
+        kf = cv2.KalmanFilter(4, 2, 0)
+        kf.transitionMatrix    = np.array([[1,0,1,0],
+                                           [0,1,0,1],
+                                           [0,0,1,0],
+                                           [0,0,0,1]], dtype=np.float32)
+        kf.measurementMatrix   = np.array([[1,0,0,0],
+                                           [0,1,0,0]], dtype=np.float32)
+        kf.processNoiseCov     = np.eye(4, dtype=np.float32) * 1e-2
+        kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1e-1
+        kf.errorCovPost        = np.eye(4, dtype=np.float32)
+        kf.statePost           = np.zeros((4,1), dtype=np.float32)
+        return kf
 
-    env = gym.make("LunarLander-v3", render_mode="rgb_array", gravity=args.gravity)
-    obs, info = env.reset()
+    def reset(self):
+        obs, info = self.env.reset()
+        self.kf = self._build_kalman()
+        frame = self.env.render()
+        if self.launch_env:
+            cv2.imshow(self.env.spec.id, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.waitKey(1)
+        return self._extract_features(frame)
 
-    print(f"[INFO] load YOLO model: {args.model}")
-    model = YOLO(args.model, task="detect")
-    print("[DEBUG] model.names =", model.names)
-    lander_id = 0
-    point_id  = 1
-
-    # 3) build kalman
-    kf = build_kalman()
-    interval = 1.0 / args.fps
-    print("[INFO] launch main loop，press Ctrl+C to exit")
-
-    step = 0
-    cum_reward = 0.0
-
-    try:
-        while True:
-            t0 = time.time()
-            frame = env.render()
-            r = model(frame,
-                      conf=args.conf,
-                      imgsz=(640, 448),  # (w,h)
-                      device="")[0]
-            ann = r.plot()
-            _ = kf.predict()
-
-            if r.obb is not None:
-                raw = r.obb.data.cpu().numpy()
-            else:
-                raw = np.zeros((0,7), dtype=np.float32)
-
-            print(f"[DEBUG] raw.shape={raw.shape}  first rows:\n{raw[:2]}")
-
-            obb_all  = raw[:, :5]            # cx, cy, w, h, angle
-            cls_all  = raw[:, 6].astype(int) # class_id
-
-            # distritube lander / landing_point
-            idx_l = np.where(cls_all == lander_id)[0]
-            obb_l  = obb_all[idx_l[:1]] if idx_l.size>0 else np.zeros((0,5), dtype=np.float32)
-
-            idx_p = np.where(cls_all == point_id)[0]
-            obb_p  = obb_all[idx_p[:1]] if idx_p.size>0 else np.zeros((0,5), dtype=np.float32)
-
-            # use lander 的 (cx,cy) for kalman correct
-            if obb_l.shape[0] > 0:
-                cx, cy = float(obb_l[0,0]), float(obb_l[0,1])
-                meas = np.array([[cx],[cy]], dtype=np.float32)
-                kf.correct(meas)
-
-            # load status after kalman
-            st = kf.statePost.flatten()
-            state6 = [float(st[0]), float(st[1]),
-                      float(st[2]), float(st[3]),
-                      0.0, 0.0]
-
-            # actions & step
-            action = 0
-            obs, reward, terminated, truncated, info = env.step(action)
-            cum_reward += reward
-
-            # log output
-            msg  = f"[Step {step}] act={action}"
-            msg += f", lander_det={obb_l.shape[0]}"
-            if obb_l.shape[0]:
-                msg += f" center_l=({obb_l[0,0]:.1f},{obb_l[0,1]:.1f})"
-            msg += f", point_det={obb_p.shape[0]}"
-            if obb_p.shape[0]:
-                msg += f" center_p=({obb_p[0,0]:.1f},{obb_p[0,1]:.1f})"
-            msg += f"  State={state6}  rew={reward:.3f} cum={cum_reward:.3f}"
-            print(msg)
-
-            step += 1
-
-            # display
+    def step(self, action):
+        # 1) 卡尔曼预测
+        _ = self.kf.predict()
+        # 2) 执行动作
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        # 3) 渲染一帧
+        frame = self.env.render()
+        # 4) YOLO 推理 & 可视化
+        r = self.model(frame, conf=0.3, imgsz=(640,448), device="")[0]
+        if self.launch_env:
+            ann = r.plot()  # 返回带框的 RGB 图
             bgr = cv2.cvtColor(ann, cv2.COLOR_RGB2BGR)
-            cv2.imshow("YOLO-Kalman", bgr)
-            if cv2.waitKey(1) in (27, ord('q')):
-                break
+            cv2.imshow(self.env.spec.id, bgr)
+            cv2.waitKey(1)
+        # 5) 特征提取 & 卡尔曼校正
+        state = self._extract_features(frame)
+        done = terminated or truncated
+        return state, reward, done
 
-            # episode end
-            if terminated or truncated:
-                obs, info = env.reset()
-                kf = build_kalman()
-                cum_reward = 0.0
-                step = 0
+    def _extract_features(self, frame):
+        # YOLO 推理（不重复 plot）
+        r = self.model(frame, conf=0.3, imgsz=(640,448), device="")[0]
+        raw = r.obb.data.cpu().numpy() if getattr(r, 'obb', None) is not None else np.zeros((0,7))
+        obb_all = raw[:, :5]  # cx, cy, w, h, angle
+        cls_all = raw[:, 6].astype(int) if raw.size else np.zeros((0,), int)
+        # lander cls=0, landing_point cls=1
+        # 校正卡尔曼：用 lander 的中心
+        idx_l = np.where(cls_all==0)[0]
+        if idx_l.size:
+            cx, cy = obb_all[idx_l[0], :2]
+            self.kf.correct(np.array([[cx],[cy]], dtype=np.float32))
+        # 提取 landing_point
+        idx_p = np.where(cls_all==1)[0]
+        if idx_p.size:
+            x_p, y_p = obb_all[idx_p[0], :2]
+        else:
+            x_p, y_p = 0.0, 0.0
+        # 卡尔曼滤波后的状态
+        st = self.kf.statePost.flatten()
+        # 返回 8 维特征
+        return np.array([st[0], st[1], st[2], st[3], 0.0, 0.0, x_p, y_p], dtype=np.float32)
 
-            # frames control
-            dt = time.time() - t0
-            if dt < interval:
-                time.sleep(interval - dt)
-
-    except KeyboardInterrupt:
-        pass
-    finally:
+    def close(self):
         cv2.destroyAllWindows()
-        env.close()
-        print("[INFO] exit")
+        self.env.close()
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model",   required=True, help="YOLO 权重 .pt 路径")
+    parser.add_argument("--fps",     type=float, default=5.0)
+    parser.add_argument("--gravity", type=float, default=-3.5)
+    args = parser.parse_args()
+
+    env = FeatureEnv(
+        model_path=args.model,
+        title="LunarLander-v3",
+        fps=args.fps,
+        gravity=args.gravity,
+        launch_env=True
+    )
+    s = env.reset()
+    print("Initial state:", s)
+    for _ in range(5):
+        s, r, done = env.step(0)
+        print("Next state, reward:", s, r)
+        if done: break
+    env.close()
