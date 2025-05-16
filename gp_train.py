@@ -8,17 +8,17 @@ from deap import base, creator, tools, algorithms
 from env_yolo_kalman import FeatureEnv
 
 # -----------------------------------------------------------------------------
-# 网络架构超参
+# hyperparameter
 # -----------------------------------------------------------------------------
 INPUT_DIM  = 6
 H1_DIM     = 32
 H2_DIM     = 32
 OUTPUT_DIM = 4
-# 参数总数
+# total hyper
 D = INPUT_DIM*H1_DIM + H1_DIM + H1_DIM*H2_DIM + H2_DIM + H2_DIM*OUTPUT_DIM + OUTPUT_DIM
 
 # -----------------------------------------------------------------------------
-# 将扁平基因映射到 MLP，输出动作
+# mapping to MLP
 # -----------------------------------------------------------------------------
 def decode_and_act(ind, state):
     idx = 0
@@ -45,7 +45,7 @@ def decode_and_act(ind, state):
     return int(np.argmax(out))
 
 # -----------------------------------------------------------------------------
-# 构造 evaluate：跑一个 episode，累计 reward，可选实时打印
+# calculate the reward
 # -----------------------------------------------------------------------------
 def make_evaluate(model_path, title, fps, gravity, debug):
     def evaluate(individual):
@@ -54,7 +54,7 @@ def make_evaluate(model_path, title, fps, gravity, debug):
             title=title,
             fps=fps,
             gravity=gravity,
-            launch_env=debug  # debug 时后台启动窗口，方便观察
+            launch_env=debug
         )
         total_reward = 0.0
         state = env.reset()
@@ -68,29 +68,28 @@ def make_evaluate(model_path, title, fps, gravity, debug):
             if debug:
                 print(f"\r[Ep Step {step}] step_reward={r:.3f}  cum_reward={total_reward:.3f}", end="")
         if debug:
-            print()  # 换行
+            print()
         env.close()
         return (total_reward,)
     return evaluate
 
 # -----------------------------------------------------------------------------
-# 主函数
+# main
 # -----------------------------------------------------------------------------
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--model',   required=True, help="YOLO .pt 模型路径")
-    p.add_argument('--title',   default="LunarLander-v3", help="窗口标题子串")
-    p.add_argument('--fps',     type=float, default=5.0,   help="帧率")
-    p.add_argument('--gravity', type=float, default=-3.5,  help="环境重力")
-    p.add_argument('--pop',     type=int,   default=50,    help="种群大小")
-    p.add_argument('--gen',     type=int,   default=20,    help="演化代数")
-    p.add_argument('--cxpb',    type=float, default=0.5,   help="交叉概率")
-    p.add_argument('--mutpb',   type=float, default=0.2,   help="变异概率")
+    p.add_argument('--model',   required=True, help="YOLO .pt model path")
+    p.add_argument('--title',   default="LunarLander-v3", help="window frame")
+    p.add_argument('--fps',     type=float, default=5.0,   help="fps")
+    p.add_argument('--gravity', type=float, default=-3.5,  help="gravity")
+    p.add_argument('--pop',     type=int,   default=50,    help="population")
+    p.add_argument('--gen',     type=int,   default=20,    help="generation")
+    p.add_argument('--cxpb',    type=float, default=0.5,   help="crossover rate")
+    p.add_argument('--mutpb',   type=float, default=0.2,   help="mutation rate")
     p.add_argument('--debug',   action='store_true',
-                   help="调试模式：显示环境窗口 & 实时打印 reward")
+                   help="display reward")
     args = p.parse_args()
 
-    # DEAP 类型定义
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
@@ -110,21 +109,21 @@ def main():
                      mu=0, sigma=0.2, indpb=0.05)
     toolbox.register("select",  tools.selTournament, tournsize=3)
 
-    # 初始化种群
+    # evo population
     pop = toolbox.population(n=args.pop)
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values[0])
     stats.register("avg", np.mean)
     stats.register("max", np.max)
 
-    # 初代评估
+    # first evoluation
     fits = list(map(toolbox.evaluate, pop))
     for ind, fit in zip(pop, fits):
         ind.fitness.values = fit
     record = stats.compile(pop)
     print(f"Gen 0: max_reward={record['max']:.3f}, avg_reward={record['avg']:.3f}")
 
-    # 演化循环
+    # evaluate loop
     for gen in range(1, args.gen+1):
         offspring = toolbox.select(pop, len(pop))
         offspring = algorithms.varAnd(offspring,
@@ -142,7 +141,7 @@ def main():
         record = stats.compile(pop)
         print(f"Gen {gen}: max_reward={record['max']:.3f}, avg_reward={record['avg']:.3f}")
 
-    # 保存最优
+    # save the best
     best = hof[0]
     np.savetxt("best_weights.txt", best)
     print("Best fitness:", best.fitness.values[0])
