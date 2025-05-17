@@ -7,11 +7,14 @@ import numpy as np
 import cv2
 import gymnasium as gym
 from ultralytics import YOLO
+import torch
+
 
 class FeatureEnv:
     """
     环境包装：将 YOLO-OBB + KalmanFilter 与 Gym LunarLander 结合，
-    返回 8 维特征 [x, y, vx, vy, 0, 0, x_p, y_p]，并在 debug 模式下显示带框画面。
+    返回 8 维特征 [x, y, vx, vy, 0, 0, x_p, y_p]，
+    并在 launch_env=True 时显示带框画面。
     """
     def __init__(self, model_path, title, fps, gravity, launch_env=False):
         # 初始化 Gym 环境
@@ -21,7 +24,14 @@ class FeatureEnv:
             gravity=gravity
         )
         self.frame_interval = 1.0 / fps
-        self.model = YOLO(model_path, task="detect")
+
+        # --- 这里只保留 verbose=False，删除 show=False ---
+        self.model = YOLO(model_path, task="detect", verbose=False)
+
+        # 将模型搬到 GPU（如果可用）或 CPU
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model.to(device)
+
         self.kf = self._build_kalman()
         self.launch_env = launch_env
         if self.launch_env:
@@ -57,39 +67,49 @@ class FeatureEnv:
         obs, reward, terminated, truncated, info = self.env.step(action)
         # 3) 渲染一帧
         frame = self.env.render()
-        # 4) YOLO 推理 & 可视化
-        r = self.model(frame, conf=0.3, imgsz=(640,448), device="")[0]
+
+        # --- 在这里控制是否在你的 OpenCV 窗口里显示框 ---
+        #    verbose=False 屏蔽终端日志；show=False 防止 YOLO 自己弹窗
+        r = self.model(frame,
+                       conf=0.3,
+                       imgsz=(640,448),
+                       verbose=False,
+                       show=False)[0]
+
         if self.launch_env:
-            ann = r.plot()  # 返回带框的 RGB 图
+            ann = r.plot()
             bgr = cv2.cvtColor(ann, cv2.COLOR_RGB2BGR)
             cv2.imshow(self.env.spec.id, bgr)
             cv2.waitKey(1)
-        # 5) 特征提取 & 卡尔曼校正
+
         state = self._extract_features(frame)
         done = terminated or truncated
         return state, reward, done
 
     def _extract_features(self, frame):
-        # YOLO 推理（不重复 plot）
-        r = self.model(frame, conf=0.3, imgsz=(640,448), device="")[0]
+        # 同样屏蔽日志 & 弹窗
+        r = self.model(frame,
+                       conf=0.3,
+                       imgsz=(640,448),
+                       verbose=False,
+                       show=False)[0]
+
         raw = r.obb.data.cpu().numpy() if getattr(r, 'obb', None) is not None else np.zeros((0,7))
-        obb_all = raw[:, :5]  # cx, cy, w, h, angle
+        obb_all = raw[:, :5]
         cls_all = raw[:, 6].astype(int) if raw.size else np.zeros((0,), int)
-        # lander cls=0, landing_point cls=1
-        # 校正卡尔曼：用 lander 的中心
+
         idx_l = np.where(cls_all==0)[0]
         if idx_l.size:
             cx, cy = obb_all[idx_l[0], :2]
             self.kf.correct(np.array([[cx],[cy]], dtype=np.float32))
-        # 提取 landing_point
+
         idx_p = np.where(cls_all==1)[0]
         if idx_p.size:
             x_p, y_p = obb_all[idx_p[0], :2]
         else:
             x_p, y_p = 0.0, 0.0
-        # 卡尔曼滤波后的状态
+
         st = self.kf.statePost.flatten()
-        # 返回 8 维特征
         return np.array([st[0], st[1], st[2], st[3], 0.0, 0.0, x_p, y_p], dtype=np.float32)
 
     def close(self):
