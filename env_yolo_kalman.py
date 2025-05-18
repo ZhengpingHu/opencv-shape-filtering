@@ -2,22 +2,20 @@
 # env_yolo_kalman.py
 
 import argparse
-import time
 import numpy as np
 import cv2
 import gymnasium as gym
-from ultralytics import YOLO
 import torch
-
+from ultralytics import YOLO
+from collections import deque
 
 class FeatureEnv:
     """
-    环境包装：将 YOLO-OBB + KalmanFilter 与 Gym LunarLander 结合，
-    返回 8 维特征 [x, y, vx, vy, 0, 0, x_p, y_p]，
-    并在 launch_env=True 时显示带框画面。
+    环境包装：将 YOLO-OBB + 卡尔曼滤波 与 Gym LunarLander 结合，
+    返回 8 维特征，并在 launch_env=True 时使用 OpenCV 窗口显示带框画面。
     """
     def __init__(self, model_path, title, fps, gravity, launch_env=False):
-        # 初始化 Gym 环境
+        # 1) 创建 rgb_array 环境
         self.env = gym.make(
             "LunarLander-v3",
             render_mode="rgb_array",
@@ -25,17 +23,19 @@ class FeatureEnv:
         )
         self.frame_interval = 1.0 / fps
 
-        # --- 这里只保留 verbose=False，删除 show=False ---
+        # 2) 加载 YOLO（关闭自身日志）
         self.model = YOLO(model_path, task="detect", verbose=False)
-
-        # 将模型搬到 GPU（如果可用）或 CPU
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(device)
 
+        # 3) 卡尔曼滤波器
         self.kf = self._build_kalman()
+
+        # 4) 如果需要可视化，就用 OpenCV 创建一个窗口
         self.launch_env = launch_env
         if self.launch_env:
             cv2.namedWindow(title, cv2.WINDOW_NORMAL)
+            self.win_name = title
 
     def _build_kalman(self):
         kf = cv2.KalmanFilter(4, 2, 0)
@@ -55,9 +55,6 @@ class FeatureEnv:
         obs, info = self.env.reset()
         self.kf = self._build_kalman()
         frame = self.env.render()
-        if self.launch_env:
-            cv2.imshow(self.env.spec.id, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            cv2.waitKey(1)
         return self._extract_features(frame)
 
     def step(self, action):
@@ -65,63 +62,60 @@ class FeatureEnv:
         _ = self.kf.predict()
         # 2) 执行动作
         obs, reward, terminated, truncated, info = self.env.step(action)
-        # 3) 渲染一帧
+        # 3) 渲染一帧 RGB 数组
         frame = self.env.render()
-
-        # --- 在这里控制是否在你的 OpenCV 窗口里显示框 ---
-        #    verbose=False 屏蔽终端日志；show=False 防止 YOLO 自己弹窗
-        r = self.model(frame,
-                       conf=0.3,
-                       imgsz=(640,448),
-                       verbose=False,
-                       show=False)[0]
-
+        # 4) YOLO 推理
+        r = self.model(frame, conf=0.3, imgsz=(640,448), verbose=False)[0]
+        # 5) 如果可视化，用同一个 OpenCV 窗口画检测框
         if self.launch_env:
-            ann = r.plot()
+            ann = r.plot()  # 画好框的 RGB 图
             bgr = cv2.cvtColor(ann, cv2.COLOR_RGB2BGR)
-            cv2.imshow(self.env.spec.id, bgr)
+            cv2.imshow(self.win_name, bgr)
             cv2.waitKey(1)
-
-        state = self._extract_features(frame)
+        # 6) 特征提取 & 卡尔曼校正
+        state = self._extract_features(frame, r)
         done = terminated or truncated
         return state, reward, done
 
-    def _extract_features(self, frame):
-        # 同样屏蔽日志 & 弹窗
-        r = self.model(frame,
-                       conf=0.3,
-                       imgsz=(640,448),
-                       verbose=False,
-                       show=False)[0]
+    def _extract_features(self, frame, result=None):
+        # 如果没有传 result，就再推一次
+        if result is None:
+            result = self.model(frame, conf=0.3, imgsz=(640,448), verbose=False)[0]
 
-        raw = r.obb.data.cpu().numpy() if getattr(r, 'obb', None) is not None else np.zeros((0,7))
+        raw = result.obb.data.cpu().numpy() if getattr(result, 'obb', None) is not None else np.zeros((0,7))
         obb_all = raw[:, :5]
         cls_all = raw[:, 6].astype(int) if raw.size else np.zeros((0,), int)
 
-        idx_l = np.where(cls_all==0)[0]
+        # 用 lander cls=0 更新 kalman
+        idx_l = np.where(cls_all == 0)[0]
         if idx_l.size:
             cx, cy = obb_all[idx_l[0], :2]
             self.kf.correct(np.array([[cx],[cy]], dtype=np.float32))
 
-        idx_p = np.where(cls_all==1)[0]
+        # landing_point cls=1
+        idx_p = np.where(cls_all == 1)[0]
         if idx_p.size:
             x_p, y_p = obb_all[idx_p[0], :2]
         else:
             x_p, y_p = 0.0, 0.0
 
         st = self.kf.statePost.flatten()
-        return np.array([st[0], st[1], st[2], st[3], 0.0, 0.0, x_p, y_p], dtype=np.float32)
+        return np.array([st[0], st[1], st[2], st[3], 0.0, 0.0, x_p, y_p],
+                        dtype=np.float32)
 
     def close(self):
-        cv2.destroyAllWindows()
+        if self.launch_env:
+            cv2.destroyAllWindows()
         self.env.close()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",   required=True, help="YOLO 权重 .pt 路径")
+    parser.add_argument("--model",   required=True, help="YOLO .pt 权重路径")
     parser.add_argument("--fps",     type=float, default=5.0)
     parser.add_argument("--gravity", type=float, default=-3.5)
+    parser.add_argument("--render",  action="store_true",
+                        help="是否打开可视化窗口")
     args = parser.parse_args()
 
     env = FeatureEnv(
@@ -129,7 +123,7 @@ if __name__ == "__main__":
         title="LunarLander-v3",
         fps=args.fps,
         gravity=args.gravity,
-        launch_env=True
+        launch_env=args.render
     )
     s = env.reset()
     print("Initial state:", s)
