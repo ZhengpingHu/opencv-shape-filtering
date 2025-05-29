@@ -53,8 +53,8 @@ def eval_genomes(genomes, config):
     fps       = eval_genomes.fps
 
     # 奖惩参数
-    vy_lim, same_thr      = 2.0, 50
-    speed_pen, repeat_pen = 50.0, 100.0
+    vy_lim, same_thr      = 2.0, 100
+    speed_pen, repeat_pen = 50.0, 300.0
     angle_thr, vel_thr    = 0.1, 1.0
     gate_frames           = max(1, int(0.3 * fps))
     pos_gate, neg_gate    = 0.3, 0.3
@@ -186,16 +186,23 @@ if __name__ == "__main__":
         winner = pop.run(eval_genomes, args.gens)
     except EarlyStop as e:
         print(f"[INFO] EarlyStop: {e}")
+        # 若提前终止，用当前种群中 fitness 最优者作为 winner
+        winner = max(pop.population.values(), key=lambda g: g.fitness)
 
-    # 最后强制存盘
+    # 最后强制存盘 checkpoint
     cp = neat.Checkpointer(filename_prefix="neat-checkpoint-")
-    cp.save_checkpoint(pop.population, pop.species, pop.generation)
+    cp.save_checkpoint(config, pop.population, pop.species, pop.generation)
     print(f"[INFO] final checkpoint={pop.generation}")
 
     # 保存最佳基因组
-    if 'winner' in locals():
-        with open("best_genome.pkl", "wb") as f:
-            pickle.dump(winner, f)
-        print("[INFO] saved best_genome.pkl")
+    with open("best_genome.pkl", "wb") as f:
+        pickle.dump(winner, f)
+    print("[INFO] saved best_genome.pkl")
+
+    # 保存对应的 NEAT 网络
+    best_net = neat.nn.FeedForwardNetwork.create(winner, config)
+    with open("best_network.pkl", "wb") as f:
+        pickle.dump(best_net, f)
+    print("[INFO] saved best_network.pkl")
 
     env.close()
