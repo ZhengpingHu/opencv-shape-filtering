@@ -16,9 +16,10 @@ def main():
     obs, info = env.reset()
     try:
         while True:
-            action = 0
+            # action = 0
+            action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
-            #frame = info['rgb_array']
+            # frame = info['rgb_array']
             print("obs:", obs[6], obs[7], "reward:", reward)
             time.sleep(0.02)
             if terminated or truncated:

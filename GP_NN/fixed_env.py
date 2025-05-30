@@ -27,9 +27,16 @@ class ContactDetector(Box2D.b2ContactListener):
         self.env = env
 
     def BeginContact(self, contact):
+        bodies = [contact.fixtureA.body, contact.fixtureB.body]
+
+        # 检查腿部接触
         for i in range(2):
-            if self.env.legs[i] in [contact.fixtureA.body, contact.fixtureB.body]:
+            if self.env.legs[i] in bodies:
                 self.env.legs[i].ground_contact = True
+
+        # 检查 lander 本体直接撞地（表示坠毁）
+            if self.env.lander in bodies and not any(self.env.legs[i] in bodies for i in range(2)):
+                self.env.game_over = True
 
     def EndContact(self, contact):
         for i in range(2):
