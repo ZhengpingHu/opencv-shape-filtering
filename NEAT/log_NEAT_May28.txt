@@ -1,0 +1,166 @@
+ ****** Running generation 299 ******
+
+  Genome 10935: env=-220.726, shaped=-11364.496, comp=-788.950
+  Genome 10938: env=-96.126, shaped=-2871.100, comp=-239.681
+  Genome 10946: env=-223.398, shaped=-7065.323, comp=-576.664
+  Genome 10959: env=-270.985, shaped=-11791.047, comp=-860.537
+  Genome 10979: env=-89.908, shaped=-3533.629, comp=-266.589
+  Genome 10980: env=-84.425, shaped=-23627.289, comp=-1265.789
+  Genome 10981: env=-152.052, shaped=-13728.126, comp=-838.458
+  Genome 10982: env=-226.172, shaped=-18054.994, comp=-1128.922
+  Genome 10983: env=-29.098, shaped=-3152.286, comp=-186.712
+  Genome 10984: env=-151.915, shaped=-20160.553, comp=-1159.943
+  Genome 10985: env=-4.829, shaped=-17870.812, comp=-898.370
+  Genome 10986: env=-130.373, shaped=-14710.166, comp=-865.881
+  Genome 10987: env=-221.075, shaped=-13139.867, comp=-878.068
+  Genome 10988: env=-14.199, shaped=-3173.783, comp=-172.889
+  Genome 10989: env=-52.275, shaped=-2959.552, comp=-200.252
+  Genome 10990: env=-27.038, shaped=-2944.611, comp=-174.269
+  Genome 10991: env=-86.191, shaped=-2605.838, comp=-216.483
+  Genome 10992: env=-155.015, shaped=-25308.109, comp=-1420.420
+  Genome 10993: env=-101.536, shaped=-8992.310, comp=-551.151
+  Genome 10994: env=-62.993, shaped=-5694.747, comp=-347.730
+  Genome 10995: env=-128.688, shaped=-17210.379, comp=-989.207
+  Genome 10996: env=-109.286, shaped=-3117.293, comp=-265.151
+  Genome 10997: env=-16.440, shaped=-23064.967, comp=-1169.689
+  Genome 10998: env=-176.647, shaped=-3425.646, comp=-347.929
+  Genome 10999: env=-84.566, shaped=-25599.908, comp=-1364.561
+  Genome 11000: env=-39.161, shaped=-15113.699, comp=-794.846
+  Genome 11001: env=-69.673, shaped=-2960.169, comp=-217.682
+  Genome 11002: env=-29.408, shaped=-2959.878, comp=-177.402
+  Genome 11003: env=-193.676, shaped=-11754.229, comp=-781.387
+  Genome 11004: env=-98.215, shaped=-3093.833, comp=-252.907
+  Genome 11005: env=-185.044, shaped=-14894.325, comp=-929.760
+  Genome 11006: env=-168.479, shaped=-10833.389, comp=-710.148
+  Genome 11007: env=-57.060, shaped=-3145.198, comp=-214.320
+  Genome 11008: env=-90.403, shaped=-3310.103, comp=-255.908
+  Genome 11009: env=-86.592, shaped=-18772.932, comp=-1025.238
+  Genome 11010: env=-104.203, shaped=-20136.207, comp=-1111.013
+  Genome 11011: env=-66.908, shaped=-3064.062, comp=-220.111
+  Genome 11012: env=-220.628, shaped=-14272.405, comp=-934.248
+  Genome 11013: env=-67.580, shaped=-3047.475, comp=-219.953
+  Genome 11014: env=-109.781, shaped=-3526.389, comp=-286.100
+  Genome 11015: env=-75.474, shaped=-3574.356, comp=-254.192
+  Genome 11016: env=-160.892, shaped=-9544.003, comp=-638.092
+  Genome 11017: env=-45.667, shaped=-3078.694, comp=-199.602
+  Genome 11018: env=-83.649, shaped=-3064.605, comp=-236.879
+  Genome 11019: env=-58.000, shaped=-3105.630, comp=-213.281
+  Genome 11020: env=28.494, shaped=-8797.762, comp=-411.394
+  Genome 11021: env=-74.761, shaped=-15972.572, comp=-873.389
+  Genome 11022: env=-50.906, shaped=-2970.831, comp=-199.448
+  Genome 11023: env=-148.855, shaped=-10861.705, comp=-691.940
+  Genome 11024: env=-233.527, shaped=-14965.875, comp=-981.821
+Population's average fitness: -600.10717 stdev: 382.75729
+Best fitness: -172.88858 - size: (120, 136) - species 143 - id 10988
+Gen 299: max=-172.889, avg=-600.107
+Average adjusted fitness: 0.664
+Average adjusted fitness: 0.664
+Mean genetic distance 1.836, standard deviation 0.247
+Mean genetic distance 1.836, standard deviation 0.247
+Population of 50 members in 3 species:
+   ID   age  size  fitness  adj fit  stag
+  ====  ===  ====  =======  =======  ====
+   141   15    15   -177.4    0.734     4
+   143    8    18   -172.9    0.574     2
+   144    1    17   -239.7    0.683     0
+Total extinctions: 0
+Generation time: 129.624 sec (132.277 average)
+
+
+
+Env info, NEAT
+
+Total extinctions: 91
+Generation time: 0.496 sec (0.943 average)
+
+ ****** Running generation 4999 ******
+
+  Genome 304420: env=-1924.722, shaped=-9320.856, total=-2390.765
+  Genome 304421: env=-827.478, shaped=-10.391, total=-827.998
+  Genome 304422: env=-364.505, shaped=-3598.349, total=-544.423
+  Genome 304423: env=-2296.472, shaped=-611.521, total=-2327.048
+  Genome 304424: env=-101.523, shaped=-19497.891, total=-1076.417
+  Genome 304425: env=-469.114, shaped=-4.864, total=-469.357
+  Genome 304426: env=-1033.471, shaped=-13.079, total=-1034.125
+  Genome 304427: env=-928.463, shaped=-2449.974, total=-1050.962
+  Genome 304428: env=-900.042, shaped=-2199.384, total=-1010.011
+  Genome 304429: env=-786.387, shaped=-11.880, total=-786.981
+  Genome 304430: env=-114.996, shaped=0.541, total=-114.969
+  Genome 304431: env=-222.414, shaped=-14397.983, total=-942.314
+  Genome 304432: env=-318.539, shaped=-18597.613, total=-1248.419
+  Genome 304433: env=-156.407, shaped=-16498.016, total=-981.308
+  Genome 304434: env=-21.279, shaped=-21897.771, total=-1116.167
+  Genome 304435: env=-89.544, shaped=-17.800, total=-90.434
+  Genome 304436: env=-428.609, shaped=-10.340, total=-429.126
+  Genome 304437: env=-434.081, shaped=-8.989, total=-434.530
+  Genome 304438: env=-606.292, shaped=-353.880, total=-623.986
+  Genome 304439: env=-562.545, shaped=-398.330, total=-582.462
+  Genome 304440: env=-24.291, shaped=0.625, total=-24.260
+  Genome 304441: env=-89.105, shaped=0.724, total=-89.069
+  Genome 304442: env=-127.282, shaped=-8398.514, total=-547.208
+  Genome 304443: env=-2.939, shaped=-17997.582, total=-902.818
+  Genome 304444: env=-344.840, shaped=-25797.121, total=-1634.696
+  Genome 304445: env=-75.222, shaped=-16498.010, total=-900.123
+  Genome 304446: env=-157.409, shaped=-15598.084, total=-937.313
+  Genome 304447: env=-50.565, shaped=0.844, total=-50.523
+  Genome 304448: env=1.383, shaped=-9597.879, total=-478.511
+  Genome 304449: env=-317.657, shaped=-314.422, total=-333.378
+  Genome 304450: env=-1593.030, shaped=-6016.990, total=-1893.879
+  Genome 304451: env=-2150.316, shaped=-14420.354, total=-2871.334
+  Genome 304452: env=-1538.745, shaped=-4518.153, total=-1764.653
+  Genome 304453: env=-410.494, shaped=-6.418, total=-410.815
+  Genome 304454: env=-15.916, shaped=0.442, total=-15.894
+  Genome 304455: env=-189.141, shaped=-13198.203, total=-849.051
+  Genome 304456: env=-51.726, shaped=-15898.011, total=-846.626
+  Genome 304457: env=-219.822, shaped=-12898.090, total=-864.726
+  Genome 304458: env=-216.134, shaped=-26697.650, total=-1551.016
+  Genome 304459: env=-144.013, shaped=-1499.009, total=-218.964
+  Genome 304460: env=-1848.597, shaped=-13222.525, total=-2509.723
+  Genome 304461: env=-113.716, shaped=-21897.805, total=-1208.607
+  Genome 304462: env=-15.824, shaped=0.487, total=-15.800
+  Genome 304463: env=-19.989, shaped=0.438, total=-19.967
+  Genome 304464: env=-98.259, shaped=-14098.153, total=-803.167
+  Genome 304465: env=40.619, shaped=0.778, total=40.658
+  Genome 304466: env=-11.718, shaped=0.555, total=-11.690
+  Genome 304467: env=-50.976, shaped=-6898.522, total=-395.902
+  Genome 304468: env=-90.394, shaped=0.400, total=-90.374
+  Genome 304469: env=-131.520, shaped=-6298.550, total=-446.447
+  Genome 304470: env=-105.102, shaped=1.071, total=-105.048
+  Genome 304471: env=-221.008, shaped=-17397.885, total=-1090.903
+  Genome 304472: env=-74.622, shaped=-4798.657, total=-314.555
+  Genome 304473: env=-95.820, shaped=-24897.707, total=-1340.705
+Population's average fitness: -807.01646 stdev: 685.34196
+Best fitness: 40.65770 - size: (22, 33) - species 5161 - id 304465
+Gen 4999: avg fitness = -807.016
+
+Species 5150 with 3 members is stagnated: removing it
+Average adjusted fitness: 0.699
+Mean genetic distance 3.305, standard deviation 0.625
+Population of 55 members in 19 species:
+   ID   age  size  fitness  adj fit  stag
+  ====  ===  ====  =======  =======  ====
+  5128   20     3  -1010.0    0.632     5
+  5129   20     4   -434.5    0.798     5
+  5132   20     2   -219.0    0.535     5
+  5137   20     2   -544.4    0.534     7
+  5139   20     2   -314.6    0.672     6
+  5145   20     4    -90.4    0.913     2
+  5147   20     4    -50.5    0.818     3
+  5148   20     3   -469.4    0.728     7
+  5153   20     3   -410.8    0.613     4
+  5161   20     4     40.7    0.944     0
+  5164   20     2   -828.0    0.433     7
+  5168   20     3    -90.4    0.897     4
+  5169   20     4    -15.8    0.890     0
+  5175   20     2   -333.4    0.402     4
+  5177   15     2    -15.9    0.790     0
+  5179   12     2   -981.3    0.603     6
+  5180   10     3   -864.7    0.571     1
+  5181    7     2   -900.1    0.593     5
+  5182    3     4    -24.3    0.910     0
+Total extinctions: 91
+Generation time: 0.526 sec (0.868 average)
+
+Best individual in generation 4999 meets fitness threshold - complexity: (20, 39)
+[INFO] saved best_genome.pkl
+[INFO] saved best_network.pkl
