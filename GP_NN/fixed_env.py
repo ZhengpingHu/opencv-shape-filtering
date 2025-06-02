@@ -4,7 +4,10 @@ import gymnasium as gym
 from gymnasium.envs.box2d.lunar_lander import LunarLander
 import Box2D
 
-FIXED_HEIGHT = 1.0
+
+from gymnasium.envs.registration import register
+
+FIXED_HEIGHT = 2.0
 
 
 
@@ -143,3 +146,12 @@ class FixedLander(LunarLander):
             self.render()
 
         return self.step(np.array([0, 0]) if self.continuous else 0)[0], {}
+
+
+
+
+register(
+    id="FixedLander-v3",
+    entry_point="fixed_env:FixedLander",  # 模块名:类名
+    max_episode_steps=200,
+)

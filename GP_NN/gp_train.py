@@ -71,7 +71,7 @@ def decode_and_act(ind, state):
 # -------------------------------------------------------------------
 # 4. 构造评价函数：滑动窗口 + 恒定渲染
 # -------------------------------------------------------------------
-def make_evaluate(model_path, title, fps, gravity, K):
+def make_evaluate(model_path, title, fps, gravity, K, alpha):
     def evaluate(individual):
         env = FeatureEnv(
             model_path=model_path,
@@ -80,18 +80,72 @@ def make_evaluate(model_path, title, fps, gravity, K):
             gravity=gravity,
             launch_env=True
         )
-        buf = deque([env.reset()]*K, maxlen=K)
-        total_reward = 0.0
+
+        buf = deque([env.reset()] * K, maxlen=K)
+        total_env_r = 0.0
+        shaping_r = 0.0
         done = False
+
+        env.same_cnt  = 0
+        env.last_act  = -1
+        env.phi       = 0.0
+        env.gating    = False
+        env.gate_cnt  = 0
+        env.gate_ok   = True
+        env.angle_thr = 0.5
+        env.vel_thr   = 0.5
+        env.vy_lim    = 0.6
+        env.same_thr  = 15
+        env.speed_pen = 0.2
+        env.repeat_pen = 0.4
+        env.pos_gate  = 2.0
+        env.neg_gate  = 2.0
+
         while not done:
             window = np.concatenate(buf)
             action = decode_and_act(individual, window)
-            s, r, done = env.step(action)
-            buf.append(s)
-            total_reward += r
+            state, reward, done = env.step(action)
+            buf.append(state)
+            total_env_r += reward
+
+            # shaping
+            env.same_cnt = env.same_cnt + 1 if action == env.last_act else 1
+            env.last_act = action
+
+            if action == 2:
+                shaping_r += 0.2
+            elif action in (1, 3):
+                shaping_r += 0.1
+
+            x, y, vx, vy, angle, ang_vel, pad_x, pad_y = state
+            phi2 = -np.hypot(x - pad_x, y - pad_y)
+            shaping_r += (0.99 * phi2 - env.phi)
+            env.phi = phi2
+
+            if abs(vy) > env.vy_lim:
+                shaping_r -= env.speed_pen
+            if env.same_cnt >= env.same_thr:
+                shaping_r -= env.repeat_pen
+
+            if not env.gating and action in (1, 2, 3):
+                env.gating = True
+                env.gate_cnt = 10
+                env.gate_ok = True
+
+            if env.gating:
+                if abs(angle) > env.angle_thr or abs(vy) > env.vel_thr:
+                    env.gate_ok = False
+                env.gate_cnt -= 1
+                if env.gate_cnt <= 0:
+                    shaping_r += (env.pos_gate if env.gate_ok else -env.neg_gate)
+                    env.gating = False
+
         env.close()
-        return (total_reward,)
+        final_reward = (1 - alpha) * total_env_r + alpha * shaping_r
+        return (final_reward,)
+
     return evaluate
+
 
 # -------------------------------------------------------------------
 # 5. 主流程：遗传算法演化
@@ -114,6 +168,8 @@ def main():
                         help="交叉概率")
     parser.add_argument('--mutpb',   type=float, default=0.2,
                         help="变异概率")
+    parser.add_argument('--alpha', type=float, default=0.1,
+                    help="自定义 reward 的权重系数 alpha")
     args = parser.parse_args()
 
     # 5.1 计算滑动窗口大小 K = 2 秒的帧数
@@ -148,7 +204,8 @@ def main():
                          args.title,
                          args.fps,
                          args.gravity,
-                         K
+                         K,
+                         args.alpha
                      ))
     toolbox.register("mate",   tools.cxTwoPoint)
     toolbox.register("mutate",
