@@ -13,14 +13,15 @@ from deap import base, creator, tools, algorithms
 from env_yolo_kalman import FeatureEnv
 
 # -------------------------------
-# 基础超参数与网络结构
+# 网络结构设置
 # -------------------------------
 BASE_INPUT_DIM = 8
-H1_DIM, H2_DIM, OUTPUT_DIM = 32, 32, 4
-INPUT_DIM = BASE_INPUT_DIM
-D = (INPUT_DIM * H1_DIM + H1_DIM +
-     H1_DIM * H2_DIM + H2_DIM +
-     H2_DIM * OUTPUT_DIM + OUTPUT_DIM)
+OUTPUT_DIM = 4
+H1_DIM, H2_DIM = 32, 32
+
+# 占位，稍后动态设置
+INPUT_DIM = None
+D = None
 
 
 class Net(nn.Module):
@@ -36,7 +37,7 @@ class Net(nn.Module):
         return self.fc3(x)
 
 
-def decode_and_act(ind, state):
+def decode_and_act(ind, input_vec):
     idx = 0
 
     def get_w(r, c):
@@ -59,7 +60,7 @@ def decode_and_act(ind, state):
     W3 = get_w(OUTPUT_DIM, H2_DIM)
     b3 = get_b(OUTPUT_DIM)
 
-    h1 = np.tanh(W1.dot(state) + b1)
+    h1 = np.tanh(W1.dot(input_vec) + b1)
     h2 = np.tanh(W2.dot(h1) + b2)
     out = W3.dot(h2) + b3
     return int(np.argmax(out))
@@ -69,6 +70,7 @@ def make_evaluate(model_path, title, fps, gravity, K, alpha, render):
     def evaluate(individual):
         env = FeatureEnv(model_path, title, fps, gravity, render)
         buf = deque([env.reset()] * K, maxlen=K)
+        act_buf = deque([[0]*OUTPUT_DIM] * K, maxlen=K)
         total_env_r, shaping_r = 0.0, 0.0
         done = False
 
@@ -89,7 +91,14 @@ def make_evaluate(model_path, title, fps, gravity, K, alpha, render):
 
         while not done:
             window = np.concatenate(buf)
-            action = decode_and_act(individual, window)
+            past_acts = np.concatenate(act_buf)
+            input_vec = np.concatenate([window, past_acts])
+            action = decode_and_act(individual, input_vec)
+
+            one_hot = [0] * OUTPUT_DIM
+            one_hot[action] = 1
+            act_buf.append(one_hot)
+
             state, reward, done = env.step(action)
             buf.append(state)
             total_env_r += reward
@@ -125,11 +134,12 @@ def make_evaluate(model_path, title, fps, gravity, K, alpha, render):
 
         env.close()
         return ((1 - alpha) * total_env_r + alpha * shaping_r,)
-
     return evaluate
 
 
 def main():
+    global INPUT_DIM, D
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', required=True)
     parser.add_argument('--title', default="LunarLander-v3")
@@ -142,13 +152,11 @@ def main():
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--continue_from', default=None)
     parser.add_argument('--save_path', default=None)
-    parser.add_argument('--render', action='store_true',
-                        help="启用渲染窗口（默认关闭）")
+    parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
     K = int(2 * args.fps)
-    global INPUT_DIM, D
-    INPUT_DIM = BASE_INPUT_DIM * K
+    INPUT_DIM = (BASE_INPUT_DIM + OUTPUT_DIM) * K
     D = INPUT_DIM * H1_DIM + H1_DIM + H1_DIM * H2_DIM + H2_DIM + H2_DIM * OUTPUT_DIM + OUTPUT_DIM
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))

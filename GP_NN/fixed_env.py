@@ -7,7 +7,7 @@ import Box2D
 
 from gymnasium.envs.registration import register
 
-FIXED_HEIGHT = 5.0
+FIXED_HEIGHT = 2.0
 
 
 
