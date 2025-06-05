@@ -145,6 +145,13 @@ yolo obb predict model=runs/obb/train8/weights/best.pt source=MODIFY save=True s
 to save the extra angel information
 
 
+## NN train
+```bash
+python gp_train.py --model best.pt --continue_from trained/best_model.pt --alpha 0.15 --save_path trained/best_model_normal.pt
+```
+
+
+use trained yolo model best.pt, continusly training in the normal mode.
 
 
 ## References:

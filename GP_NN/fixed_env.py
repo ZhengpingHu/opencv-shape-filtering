@@ -7,7 +7,7 @@ import Box2D
 
 from gymnasium.envs.registration import register
 
-FIXED_HEIGHT = 2.0
+FIXED_HEIGHT = 5.0
 
 
 
@@ -153,5 +153,5 @@ class FixedLander(LunarLander):
 register(
     id="FixedLander-v3",
     entry_point="fixed_env:FixedLander",  # 模块名:类名
-    max_episode_steps=200,
+    max_episode_steps=400,
 )
