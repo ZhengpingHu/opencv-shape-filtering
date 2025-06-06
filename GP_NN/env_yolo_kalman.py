@@ -18,8 +18,17 @@ class FeatureEnv:
     并在 launch_env=True 时使用 OpenCV 窗口显示带框画面。
     """
     def __init__(self, model_path, title, fps, gravity, launch_env=False):
+        # Fixed env
+        
+        # self.env = gym.make(
+        #     "FixedLander-v3",
+        #     render_mode="rgb_array",
+        #     gravity=gravity
+        # )
+
+        # Original Env
         self.env = gym.make(
-            "FixedLander-v3",
+            "LunarLander-v3",
             render_mode="rgb_array",
             gravity=gravity
         )
