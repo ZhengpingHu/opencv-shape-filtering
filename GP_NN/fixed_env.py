@@ -49,6 +49,8 @@ class ContactDetector(Box2D.b2ContactListener):
 
 class FixedLander(LunarLander):
     def reset(self, *, seed=None, options=None):
+        theta = getattr(self, 'custom_init_angle', 0.0) or 0.0
+        
         super().reset(seed=seed)
         self._destroy()
 
@@ -103,12 +105,20 @@ class FixedLander(LunarLander):
         self.lander.color1 = (128, 102, 230)
         self.lander.color2 = (77, 77, 128)
 
-        # 着陆腿
         self.legs = []
         for i in [-1, +1]:
+            # 相对于 lander 的局部锚点位置（注意不是全局位置）
+            anchor_offset = (
+                i * LEG_AWAY / SCALE * np.cos(theta) - LEG_DOWN / SCALE * np.sin(theta),
+                i * LEG_AWAY / SCALE * np.sin(theta) + LEG_DOWN / SCALE * np.cos(theta),
+            )
+
             leg = self.world.CreateDynamicBody(
-                position=(initial_x - i * LEG_AWAY / SCALE, initial_y),
-                angle=(i * 0.05),
+                position=(
+                    initial_x + anchor_offset[0],
+                    initial_y + anchor_offset[1],
+                ),
+                angle=theta + (i * 0.05),  # 基于 lander 的初始角度
                 fixtures=fixtureDef(
                     shape=polygonShape(box=(LEG_W / SCALE, LEG_H / SCALE)),
                     density=1.0,
@@ -129,7 +139,7 @@ class FixedLander(LunarLander):
                 enableMotor=True,
                 enableLimit=True,
                 maxMotorTorque=LEG_SPRING_TORQUE,
-                motorSpeed=+0.3 * i,  # 左右方向不同
+                motorSpeed=+0.3 * i,
             )
             if i == -1:
                 rjd.lowerAngle = +0.4
@@ -140,10 +150,10 @@ class FixedLander(LunarLander):
             leg.joint = self.world.CreateJoint(rjd)
             self.legs.append(leg)
 
-        self.drawlist = [self.lander] + self.legs
+            self.drawlist = [self.lander] + self.legs
 
-        if self.render_mode == "human":
-            self.render()
+            if self.render_mode == "human":
+                self.render()
 
         return self.step(np.array([0, 0]) if self.continuous else 0)[0], {}
 
