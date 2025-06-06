@@ -47,6 +47,6 @@ for filename, info in label_data.items():
     label_name = os.path.splitext(filename)[0] + '.txt'
     label_path = os.path.join(output_dir, label_name)
     with open(label_path, 'w') as f:
-        f.write("0 " + " ".join(f"{p:.6f}" for p in rotated) + "\n")
+        f.write("0 " + " ".join(f"{p:.6f}" for p in rotated))
 
 print("✅ 所有标签已更新完成！")
