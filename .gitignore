@@ -2,6 +2,7 @@
 *.hdf5
 *.pth
 *.pt
+*.png
 neat-checkpoint-*
 
 
