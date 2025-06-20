@@ -14,7 +14,7 @@ register(
 )
 
 def main():
-    env = gym.make("FixedLander-v3", render_mode="rgb_array", gravity=-3.5)
+    env = gym.make("FixedLander-v3", render_mode="human", gravity=-3.5)
     obs, info = env.reset()
     try:
         while True:

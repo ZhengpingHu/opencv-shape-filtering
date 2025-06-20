@@ -14,7 +14,7 @@ register(
 )
 
 def main():
-    env = gym.make("FixedLander-v3", render_mode="rgb_array", gravity=-3.5)
+    env = gym.make("LunarLander-v3", render_mode="rgb_array", gravity=-3.5)
     obs, info = env.reset()
     try:
         while True:
@@ -22,7 +22,7 @@ def main():
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             # frame = info['rgb_array']
-            print("obs:", obs[6], obs[7], "reward:", reward)
+            # print("obs:", obs[6], obs[7], "reward:", reward)
             time.sleep(0.02)
             if terminated or truncated:
                 obs, info = env.reset()

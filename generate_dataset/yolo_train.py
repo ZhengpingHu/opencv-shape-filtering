@@ -13,7 +13,7 @@ def main():
     imgsz=640,
     epochs=100,
     batch=8,
-    workers=0,
+    workers=4,
     task="obb",
     verbose=True,
     name="train_fixed"
