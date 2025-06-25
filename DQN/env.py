@@ -20,7 +20,8 @@ def main():
         while True:
             # action = 0
             action = env.action_space.sample()
-            obs, reward, terminated, truncated, info = env.step(action)
+
+            obs, reward, terminated, truncated, info = env.step(0)
             # frame = info['rgb_array']
             # print("obs:", obs[6], obs[7], "reward:", reward)
             time.sleep(0.02)

@@ -62,7 +62,7 @@ def main():
                 break
 
             action = env.action_space.sample()
-            obs, _, terminated, truncated, _ = env.step(action)
+            obs, _, terminated, truncated, _ = env.step(0)
             if terminated or truncated:
                 obs, _ = env.reset()
 

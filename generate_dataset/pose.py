@@ -10,19 +10,24 @@ import gymnasium as gym
 PER_CLASS = 1000
 SCALE = 30.0
 IMG_W, IMG_H = 600, 400
-BBOX_W, BBOX_H = 80, 80
+BBOX_W, BBOX_H = 120, 120
 SPLIT = {'train': 0.7, 'val': 0.1, 'test': 0.2}
 ROOT_LANDER = "./pose_lander"
 ROOT_TERRAIN = "./pose_terrain"
 VIS_COUNT = 100
 random.seed(42)
 
+# === 工具函数 ===
 def world_to_pixel(x, y): return int(x * SCALE), int(IMG_H - y * SCALE)
 def norm_xy(x, y): return x / IMG_W, y / IMG_H
 def get_leg_tip(leg, center):
     verts = [leg.GetWorldPoint(v) for v in leg.fixtures[0].shape.vertices]
     dists = [np.linalg.norm(np.array(v) - np.array(center)) for v in verts]
     return verts[int(np.argmax(dists))]
+def get_leg_top(leg, center):
+    verts = [leg.GetWorldPoint(v) for v in leg.fixtures[0].shape.vertices]
+    dists = [np.linalg.norm(np.array(v) - np.array(center)) for v in verts]
+    return verts[int(np.argmin(dists))]
 def get_touchdown_class(legs):
     leg_left = min(legs, key=lambda l: l.position[0])
     leg_right = max(legs, key=lambda l: l.position[0])
@@ -59,9 +64,11 @@ with tqdm(total=PER_CLASS * 4, desc="Sampling") as pbar:
                         cx, cy = lander.position
                         tip0 = get_leg_tip(legs[0], (cx, cy))
                         tip1 = get_leg_tip(legs[1], (cx, cy))
+                        top0 = get_leg_top(legs[0], (cx, cy))
+                        top1 = get_leg_top(legs[1], (cx, cy))
                         terrain_world = [v for poly in env.unwrapped.sky_polys for v in poly[:2]]
                         terrain_pixels = [world_to_pixel(x, y) for x, y in terrain_world]
-                        per_class_data[cls].append((frame.copy(), cls, (cx, cy), tip0, tip1, terrain_world, terrain_pixels))
+                        per_class_data[cls].append((frame.copy(), cls, (cx, cy), top0, tip0, top1, tip1, terrain_world, terrain_pixels))
                         pbar.update(1)
                 except Exception as e:
                     print("[WARN] Skip one frame:", e)
@@ -87,19 +94,21 @@ for split_name, items in splits.items():
     make_dirs(ROOT_LANDER, split_name)
     make_dirs(ROOT_TERRAIN, split_name)
 
-    for img, cls, center, tip0, tip1, terrain_world, terrain_pixels in tqdm(items, desc=f"Saving {split_name}"):
+    for img, cls, center, top0, tip0, top1, tip1, terrain_world, terrain_pixels in tqdm(items, desc=f"Saving {split_name}"):
         name = f"{global_id:05d}"
         Image.fromarray(img).save(f"{ROOT_LANDER}/{split_name}/images/{name}.jpg")
         Image.fromarray(img).save(f"{ROOT_TERRAIN}/{split_name}/images/{name}.jpg")
 
-        # === Lander ===
         cx_pix, cy_pix = world_to_pixel(*center)
         x_center, y_center = cx_pix / IMG_W, cy_pix / IMG_H
         bbox_w, bbox_h = BBOX_W / IMG_W, BBOX_H / IMG_H
+
         def kpt_pix(xw, yw):
             xp, yp = world_to_pixel(xw, yw)
             return [xp / IMG_W, yp / IMG_H]
-        kpts_lander = kpt_pix(*center) + kpt_pix(*tip0) + kpt_pix(*tip1)
+
+        # 中心 + 两腿上下端点（共5点）
+        kpts_lander = kpt_pix(*center) + kpt_pix(*top0) + kpt_pix(*tip0) + kpt_pix(*top1) + kpt_pix(*tip1)
 
         # === Terrain ===
         terrain_contour = sorted(terrain_pixels, key=lambda p: p[0])
@@ -138,10 +147,21 @@ for name, cls, split in sampled_vis:
     x1 = int((xc + bw/2) * IMG_W)
     y1 = int((yc + bh/2) * IMG_H)
     cv2.rectangle(vis, (x0, y0), (x1, y1), (0,255,0), 1)
+    points = []
     for i in range(0, len(pts), 2):
         px = int(pts[i] * IMG_W)
         py = int(pts[i+1] * IMG_H)
         cv2.circle(vis, (px, py), 4, (0,255,0), -1)
+        points.append((px, py))
+
+    # 添加结构连线：中心 ↔ 两腿上端，各腿上下端点连线，腿底横连线
+    if len(points) == 5:
+        cv2.line(vis, points[0], points[1], (255, 0, 255), 1)
+        cv2.line(vis, points[0], points[3], (255, 0, 255), 1)
+        cv2.line(vis, points[1], points[2], (255, 0, 255), 1)
+        cv2.line(vis, points[3], points[4], (255, 0, 255), 1)
+        cv2.line(vis, points[2], points[4], (255, 0, 255), 1)
+
     cv2.imwrite(f"./visuals/vis_{name}.jpg", vis)
 
 # === YAML ===
@@ -153,7 +173,7 @@ test: {ROOT_LANDER}/test/images
 
 nc: 1
 names: ['lander']
-kpt_shape: [3, 2]
+kpt_shape: [5, 2]
 """)
 with open(f"{ROOT_TERRAIN}/dataset.yaml", "w") as f:
     f.write(f"""

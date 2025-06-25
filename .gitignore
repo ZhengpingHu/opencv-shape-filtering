@@ -3,6 +3,10 @@
 *.pth
 *.pt
 *.png
+*.jpg
+*.yaml
+*.zip
+*.txt
 neat-checkpoint-*
 
 
